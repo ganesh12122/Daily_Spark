@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../core/models/discipline_manager.dart';
-import '../../core/providers/discipline_provider.dart';
-import '../../core/services/analytics_service.dart';
 
 class DisciplineItemWidget extends StatelessWidget {
   final DisciplineManager discipline;
@@ -27,58 +24,64 @@ class DisciplineItemWidget extends StatelessWidget {
     return SizeTransition(
       sizeFactor: animation,
       child: Dismissible(
-        key: Key(discipline.id),
-        direction: DismissDirection.startToEnd,
-        onDismissed: (direction) {
-          onDismiss(direction).then((result) {
-            if (result == true) {
-              AnalyticsService.logEvent('discipline_dismissed');
-            }
-          });
-        },
-        confirmDismiss: onDismiss,
+        key: Key(discipline.discipline + index.toString()),
         background: Container(
           color: Colors.red,
           alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.only(left: 20),
           child: const Icon(Icons.delete, color: Colors.white),
         ),
         secondaryBackground: Container(
           color: Colors.blue,
           alignment: Alignment.centerRight,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.only(right: 20),
           child: const Icon(Icons.alarm, color: Colors.white),
         ),
+        onDismissed: (direction) {},
+        confirmDismiss: (direction) async => await onDismiss(direction),
         child: Card(
-          margin: const EdgeInsets.symmetric(vertical: 8),
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
           child: ListTile(
             leading: Checkbox(
               value: discipline.isDone,
               onChanged: (value) {
-                onToggle(value ?? false);
-                AnalyticsService.logEvent('checkbox_toggled', params: {'is_done': value});
+                if (value != null) onToggle(value);
               },
             ),
             title: Text(
               discipline.discipline,
               style: TextStyle(
+                fontWeight: FontWeight.bold,
                 decoration: discipline.isDone ? TextDecoration.lineThrough : null,
-                color: discipline.isDone ? Colors.grey : null,
               ),
             ),
-            subtitle: discipline.hasCommitment
-                ? Text(
-              'Committed: ${discipline.streak}/48 days (${discipline.stars}★)',
-              style: const TextStyle(color: Colors.orange),
-            )
-                : Text(
-              'Streak: ${discipline.streak} days (${discipline.stars}★)',
-              style: const TextStyle(color: Colors.green),
+            subtitle: Row(
+              children: [
+                Text('🔥 Streak: ${discipline.streak}'),
+                const SizedBox(width: 10),
+                if (discipline.stars > 0)
+                  Text(
+                    '★ ${discipline.stars}',
+                    style: const TextStyle(color: Colors.amber),
+                  ),
+              ],
             ),
-            trailing: IconButton(
-              icon: const Icon(Icons.alarm),
-              onPressed: onSetReminder,
-              tooltip: 'Set Reminder',
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (discipline.reminderTime != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Text(
+                      discipline.reminderTime!.format(context),
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.alarm),
+                  onPressed: onSetReminder,
+                ),
+              ],
             ),
           ),
         ),

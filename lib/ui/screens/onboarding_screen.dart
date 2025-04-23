@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:introduction_screen/introduction_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'daily_spark_screen.dart';
+import 'app_navigation.dart';
 
 class OnboardingWrapper extends StatefulWidget {
   const OnboardingWrapper({super.key});
@@ -44,7 +44,7 @@ class _OnboardingWrapperState extends State<OnboardingWrapper> {
       onDone: _completeOnboarding,
       onSkip: _completeOnboarding,
     )
-        : const DailySparkScreen();
+        : const AppNavigation();
   }
 }
 
@@ -88,6 +88,17 @@ class OnboardingScreen extends StatelessWidget {
         body: "Stay consistent to unlock Gold and Silver badges for your progress!",
         image: const Center(
           child: Icon(Icons.emoji_events, size: 100, color: Colors.amber),
+        ),
+        decoration: const PageDecoration(
+          titleTextStyle: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          bodyTextStyle: TextStyle(fontSize: 16),
+        ),
+      ),
+      PageViewModel(
+        title: "Reflect Daily",
+        body: "Write daily thoughts to strengthen your mindset and track your journey.",
+        image: const Center(
+          child: Icon(Icons.book, size: 100, color: Colors.blue),
         ),
         decoration: const PageDecoration(
           titleTextStyle: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),

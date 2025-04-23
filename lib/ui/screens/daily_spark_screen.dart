@@ -78,7 +78,6 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
     try {
       final granted = await _notificationService.requestNotificationPermission();
       if (granted) {
-        await _notificationService.initialize();
         await _notificationService.scheduleDailyReminders();
       } else {
         debugPrint('Notification permission denied');
@@ -101,10 +100,17 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
         setState(() {
           _pomodoroSeconds--;
         });
-      } else if (_pomodoroSeconds <= 0) {
-        _stopPomodoro();
+        if (_pomodoroSeconds == 0) {
+          _playPomodoroChime();
+          _stopPomodoro();
+        }
       }
     });
+  }
+
+  void _playPomodoroChime() {
+    _audioPlayer.play(AssetSource('sounds/chime.mp3'));
+    HapticFeedback.mediumImpact();
   }
 
   void _checkAchievements() {
@@ -194,7 +200,7 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
     setState(() {
       _pomodoroActive = true;
       _pomodoroSeconds = 25 * 60;
-      _isPaused = true; // Pause time wasted counter
+      _isPaused = true;
     });
     HapticFeedback.lightImpact();
     AnalyticsService.logEvent('pomodoro_started');
@@ -203,7 +209,7 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
   void _stopPomodoro() {
     setState(() {
       _pomodoroActive = false;
-      _isPaused = false; // Resume time wasted counter
+      _isPaused = false;
     });
     HapticFeedback.lightImpact();
     AnalyticsService.logEvent('pomodoro_stopped');
@@ -213,7 +219,7 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
     setState(() {
       _pomodoroSeconds = 25 * 60;
       _pomodoroActive = false;
-      _isPaused = false; // Resume time wasted counter
+      _isPaused = false;
     });
     HapticFeedback.lightImpact();
     AnalyticsService.logEvent('pomodoro_reset');
@@ -305,8 +311,10 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
     if (direction == DismissDirection.startToEnd) {
       final discipline = _displayedList[index];
       if (!provider.canDeleteDiscipline(discipline)) {
+        // Store context before async operation
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             SnackBar(
               content: Text(
                 'You must achieve a 48-day streak before deleting "${discipline.discipline}"!',
@@ -353,7 +361,8 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
         context: context,
         initialTime: _displayedList[index].reminderTime ?? TimeOfDay.now(),
       );
-      if (selectedTime != null && mounted) {
+      if (!mounted) return false;
+      if (selectedTime != null) {
         provider.updateReminder(index, selectedTime);
         _displayedList[index] = provider.list[index];
         HapticFeedback.lightImpact();
@@ -369,7 +378,8 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
       context: context,
       initialTime: initialTime,
     );
-    if (selectedTime != null && mounted) {
+    if (!mounted) return;
+    if (selectedTime != null) {
       provider.updateReminder(index, selectedTime);
       _displayedList[index] = provider.list[index];
       HapticFeedback.lightImpact();
@@ -530,141 +540,115 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
     final theme = Theme.of(context);
     final today = DateTime.now();
 
-    return Scaffold(
-      body: Stack(
-        alignment: Alignment.topCenter,
-        children: [
-          CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                floating: true,
-                snap: true,
-                title: const Text('SPARKVOW'),
-                actions: [
-                  IconButton(
-                    icon: Icon(disciplineProvider.darkMode
-                        ? Icons.light_mode
-                        : Icons.dark_mode),
-                    tooltip: 'Toggle theme',
-                    onPressed: () {
-                      disciplineProvider.toggleDarkMode();
-                      HapticFeedback.lightImpact();
-                      AnalyticsService.logEvent('theme_toggled',
-                          params: {'dark_mode': disciplineProvider.darkMode});
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.leaderboard),
-                    tooltip: 'View stats',
-                    onPressed: () {
-                      _showStatistics(context, disciplineProvider);
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.info_outline),
-                    tooltip: 'About app',
-                    onPressed: () {
-                      _showAboutDialog(context);
-                    },
-                  ),
-                ],
-              ),
-              SliverPadding(
+    return Stack(
+      alignment: Alignment.topCenter,
+      children: [
+        CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'TIME WASTED:',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              '$_secondsWasted s',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.error,
-                              ),
-                            ),
-                          ],
-                        ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'SPARKVOW',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Column(
-                          children: [
-                            const Text(
-                              'FOCUS TIMER',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(disciplineProvider.darkMode
+                              ? Icons.light_mode
+                              : Icons.dark_mode),
+                          tooltip: 'Toggle theme',
+                          onPressed: () {
+                            disciplineProvider.toggleDarkMode();
+                            HapticFeedback.lightImpact();
+                            AnalyticsService.logEvent('theme_toggled',
+                                params: {'dark_mode': disciplineProvider.darkMode});
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.leaderboard),
+                          tooltip: 'View stats',
+                          onPressed: () {
+                            _showStatistics(context, disciplineProvider);
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.info_outline),
+                          tooltip: 'About app',
+                          onPressed: () {
+                            _showAboutDialog(context);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.all(16.0),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'TIME WASTED:',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _formatTime(_pomodoroSeconds),
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: _pomodoroActive ? Colors.green : Colors.grey,
-                              ),
+                          ),
+                          Text(
+                            '$_secondsWasted s',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.error,
                             ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                if (!_pomodoroActive)
-                                  ScaleTransition(
-                                    scale: Tween<double>(begin: 0.95, end: 1.0).animate(
-                                      CurvedAnimation(
-                                        parent: _pulseController,
-                                        curve: Curves.easeInOut,
-                                      ),
-                                    ),
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                      onPressed: _startPomodoro,
-                                      child: const Text('START'),
-                                    ),
-                                  )
-                                else
-                                  ScaleTransition(
-                                    scale: Tween<double>(begin: 0.95, end: 1.0).animate(
-                                      CurvedAnimation(
-                                        parent: _pulseController,
-                                        curve: Curves.easeInOut,
-                                      ),
-                                    ),
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                      onPressed: _stopPomodoro,
-                                      child: const Text('STOP'),
-                                    ),
-                                  ),
-                                const SizedBox(width: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'FOCUS TIMER',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _formatTime(_pomodoroSeconds),
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: _pomodoroActive ? Colors.green : Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (!_pomodoroActive)
                                 ScaleTransition(
                                   scale: Tween<double>(begin: 0.95, end: 1.0).animate(
                                     CurvedAnimation(
@@ -674,309 +658,344 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
                                   ),
                                   child: ElevatedButton(
                                     style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                     ),
-                                    onPressed: _resetPomodoro,
-                                    child: const Text('RESET'),
+                                    onPressed: _startPomodoro,
+                                    child: const Text('START'),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12.0),
-                        child: Center(
-                          child: Text(
-                            DateFormat('EEEE, MMMM d, y').format(today),
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: TextField(
-                          controller: _controller,
-                          focusNode: _focusNode,
-                          decoration: InputDecoration(
-                            hintText: 'Add a new discipline (e.g., "Morning Run")',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.add_circle, size: 32),
-                              onPressed: () {
-                                if (_controller.text.trim().isNotEmpty) {
-                                  _addDiscipline(disciplineProvider, _controller.text.trim());
-                                  _controller.clear();
-                                  FocusScope.of(context).unfocus();
-                                }
-                              },
-                            ),
-                          ),
-                          onSubmitted: (value) {
-                            if (value.trim().isNotEmpty) {
-                              _addDiscipline(disciplineProvider, value.trim());
-                              _controller.clear();
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    FadeTransition(
-                      opacity: _quoteFadeController,
-                      child: MotivationalQuoteWidget(),
-                    ),
-                    const SizedBox(height: 16),
-                  ]),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.only(bottom: 80.0),
-                sliver: _displayedList.isEmpty
-                    ? SliverFillRemaining(
-                  child: EmptyStateWidget(),
-                )
-                    : SliverAnimatedList(
-                  key: _listKey,
-                  initialItemCount: _displayedList.length,
-                  itemBuilder: (context, index, animation) {
-                    return DisciplineItemWidget(
-                      discipline: _displayedList[index],
-                      index: index,
-                      animation: animation,
-                      onToggle: (value) async {
-                        final provider = Provider.of<DisciplineProvider>(context, listen: false);
-                        if (value == false && _displayedList[index].isDone) {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text('Reset Completion'),
-                              content: const Text(
-                                'This will reset your streak if this was today\'s completion!',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(true),
-                                  child: const Text('Reset'),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm != true) return;
-                        }
-                        provider.toggleCompletion(index);
-                        _displayedList[index] = provider.list[index];
-                        _checkAchievements();
-                        _checkMilestones(provider);
-                        HapticFeedback.lightImpact();
-                        AnalyticsService.logEvent('discipline_toggled', params: {'is_done': value});
-                      },
-                      onDismiss: (direction) => _handleDismiss(direction, index, disciplineProvider),
-                      onSetReminder: () => _handleSetReminder(index, disciplineProvider),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-          if (_showAchievement)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.7),
-                child: Center(
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 0.8, end: 1.0).animate(
-                      CurvedAnimation(
-                        parent: _badgeScaleController,
-                        curve: Curves.easeOutBack,
-                      ),
-                    ),
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _achievementLevel == 'gold' ? '🏆 GOLD BADGE' : '🥈 SILVER BADGE',
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              _achievementMessage,
-                              style: const TextStyle(fontSize: 18),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 20),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _achievementLevel == 'gold'
-                                    ? Colors.amber[700]
-                                    : Colors.grey[400],
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _showAchievement = false;
-                                  _badgeScaleController.reset();
-                                });
-                              },
-                              child: Text(_achievementLevel == 'gold'
-                                  ? 'I AM UNSTOPPABLE!'
-                                  : 'I WILL DO BETTER!'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          if (_showMilestone && _milestoneDiscipline != null)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.7),
-                child: Center(
-                  child: Stack(
-                    alignment: Alignment.topCenter,
-                    children: [
-                      ScaleTransition(
-                        scale: Tween<double>(begin: 0.8, end: 1.0).animate(
-                          CurvedAnimation(
-                            parent: _badgeScaleController,
-                            curve: Curves.easeOutBack,
-                          ),
-                        ),
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20.0),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _milestoneDiscipline!.hasCommitment
-                                      ? '🌟 ${'★' * _milestoneDiscipline!.stars} ACHIEVED!'
-                                      : '🎉 QUICK WIN ACHIEVED!',
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  _milestoneDiscipline!.hasCommitment
-                                      ? 'You’re a Discipline Titan! You earned ${_milestoneDiscipline!.stars} star(s) '
-                                      'and ${_milestoneDiscipline!.stars == 1 ? 100 : 50} gold medals for '
-                                      '"${_milestoneDiscipline!.discipline}"!'
-                                      : 'You nailed "${_milestoneDiscipline!.discipline}" for 7 days straight! '
-                                      'Earned a Quick Win badge!',
-                                  style: const TextStyle(fontSize: 18),
-                                  textAlign: TextAlign.center,
-                                ),
-                                if (_milestoneDiscipline!.hasCommitment && _milestoneDiscipline!.stars >= 3)
-                                  const Padding(
-                                    padding: EdgeInsets.only(top: 10),
-                                    child: Text(
-                                      '🛡️ IRON WILL BADGE UNLOCKED!',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.purple,
-                                      ),
+                                )
+                              else
+                                ScaleTransition(
+                                  scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                                    CurvedAnimation(
+                                      parent: _pulseController,
+                                      curve: Curves.easeInOut,
                                     ),
                                   ),
-                                const SizedBox(height: 20),
-                                ElevatedButton(
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    onPressed: _stopPomodoro,
+                                    child: const Text('STOP'),
+                                  ),
+                                ),
+                              const SizedBox(width: 10),
+                              ScaleTransition(
+                                scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                                  CurvedAnimation(
+                                    parent: _pulseController,
+                                    curve: Curves.easeInOut,
+                                  ),
+                                ),
+                                child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.amber[700],
-                                    foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _showMilestone = false;
-                                      _milestoneDiscipline = null;
-                                      _badgeScaleController.reset();
-                                    });
-                                  },
-                                  child: const Text('KEEP FORGING!'),
+                                  onPressed: _resetPomodoro,
+                                  child: const Text('RESET'),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      child: Center(
+                        child: Text(
+                          DateFormat('EEEE, MMMM d, y').format(today),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
                           ),
                         ),
                       ),
-                      ConfettiWidget(
-                        confettiController: _confettiController,
-                        blastDirectionality: BlastDirectionality.explosive,
-                        colors: const [Colors.purple, Colors.green, Colors.amber],
-                        numberOfParticles: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        decoration: InputDecoration(
+                          hintText: 'Add a new discipline (e.g., "Morning Run")',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.add_circle, size: 32),
+                            onPressed: () {
+                              if (_controller.text.trim().isNotEmpty) {
+                                _addDiscipline(disciplineProvider, _controller.text.trim());
+                                _controller.clear();
+                                FocusScope.of(context).unfocus();
+                              }
+                            },
+                          ),
+                        ),
+                        onSubmitted: (value) {
+                          if (value.trim().isNotEmpty) {
+                            _addDiscipline(disciplineProvider, value.trim());
+                            _controller.clear();
+                          }
+                        },
                       ),
-                    ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FadeTransition(
+                    opacity: _quoteFadeController,
+                    child: MotivationalQuoteWidget(),
+                  ),
+                  const SizedBox(height: 16),
+                ]),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.only(bottom: 80.0),
+              sliver: _displayedList.isEmpty
+                  ? SliverFillRemaining(
+                child: EmptyStateWidget(),
+              )
+                  : SliverAnimatedList(
+                key: _listKey,
+                initialItemCount: _displayedList.length,
+                itemBuilder: (context, index, animation) {
+                  return DisciplineItemWidget(
+                    discipline: _displayedList[index],
+                    index: index,
+                    animation: animation,
+                    onToggle: (value) async {
+                      final provider = Provider.of<DisciplineProvider>(context, listen: false);
+                      if (value == false && _displayedList[index].isDone) {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Reset Completion'),
+                            content: const Text(
+                              'This will reset your streak if this was today\'s completion!',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(true),
+                                child: const Text('Reset'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm != true) return;
+                      }
+                      provider.toggleCompletion(index);
+                      _displayedList[index] = provider.list[index];
+                      _checkAchievements();
+                      _checkMilestones(provider);
+                      HapticFeedback.lightImpact();
+                      AnalyticsService.logEvent('discipline_toggled', params: {'is_done': value});
+                    },
+                    onDismiss: (direction) => _handleDismiss(direction, index, disciplineProvider),
+                    onSetReminder: () => _handleSetReminder(index, disciplineProvider),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        if (_showAchievement)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.7),
+              child: Center(
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+                    CurvedAnimation(
+                      parent: _badgeScaleController,
+                      curve: Curves.easeOutBack,
+                    ),
+                  ),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _achievementLevel == 'gold' ? '🏆 GOLD BADGE' : '🥈 SILVER BADGE',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            _achievementMessage,
+                            style: const TextStyle(fontSize: 18),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 20),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _achievementLevel == 'gold'
+                                  ? Colors.amber[700]
+                                  : Colors.grey[400],
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _showAchievement = false;
+                                _badgeScaleController.reset();
+                              });
+                            },
+                            child: Text(_achievementLevel == 'gold'
+                                ? 'I AM UNSTOPPABLE!'
+                                : 'I WILL DO BETTER!'),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
-        ],
-      ),
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        child: Container(
-          height: 60.0,
-        ),
-      ),
-      floatingActionButton: ScaleTransition(
-        scale: Tween<double>(begin: 0.95, end: 1.0).animate(
-          CurvedAnimation(
-            parent: _pulseController,
-            curve: Curves.easeInOut,
+          ),
+        if (_showMilestone && _milestoneDiscipline != null)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.7),
+              child: Center(
+                child: Stack(
+                  alignment: Alignment.topCenter,
+                  children: [
+                    ScaleTransition(
+                      scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+                        CurvedAnimation(
+                          parent: _badgeScaleController,
+                          curve: Curves.easeOutBack,
+                        ),
+                      ),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _milestoneDiscipline!.hasCommitment
+                                    ? '🌟 ${'★' * _milestoneDiscipline!.stars} ACHIEVED!'
+                                    : '🎉 QUICK WIN ACHIEVED!',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                _milestoneDiscipline!.hasCommitment
+                                    ? 'You’re a Discipline Titan! You earned ${_milestoneDiscipline!.stars} star(s) '
+                                    'and ${_milestoneDiscipline!.stars == 1 ? 100 : 50} gold medals for '
+                                    '"${_milestoneDiscipline!.discipline}"!'
+                                    : 'You nailed "${_milestoneDiscipline!.discipline}" for 7 days straight! '
+                                    'Earned a Quick Win badge!',
+                                style: const TextStyle(fontSize: 18),
+                                textAlign: TextAlign.center,
+                              ),
+                              if (_milestoneDiscipline!.hasCommitment && _milestoneDiscipline!.stars >= 3)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 10),
+                                  child: Text(
+                                    '🛡️ IRON WILL BADGE UNLOCKED!',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.purple,
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(height: 20),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.amber[700],
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _showMilestone = false;
+                                    _milestoneDiscipline = null;
+                                    _badgeScaleController.reset();
+                                  });
+                                },
+                                child: const Text('KEEP FORGING!'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    ConfettiWidget(
+                      confettiController: _confettiController,
+                      blastDirectionality: BlastDirectionality.explosive,
+                      colors: const [Colors.purple, Colors.green, Colors.amber],
+                      numberOfParticles: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        Positioned(
+          bottom: 80,
+          right: 16,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+              CurvedAnimation(
+                parent: _pulseController,
+                curve: Curves.easeInOut,
+              ),
+            ),
+            child: FloatingActionButton(
+              backgroundColor: Colors.deepPurple,
+              foregroundColor: Colors.white,
+              onPressed: () {
+                if (_controller.text.trim().isNotEmpty) {
+                  _addDiscipline(disciplineProvider, _controller.text.trim());
+                  _controller.clear();
+                  FocusScope.of(context).unfocus();
+                } else {
+                  FocusScope.of(context).requestFocus(_focusNode);
+                }
+              },
+              child: const Icon(Icons.add),
+            ),
           ),
         ),
-        child: FloatingActionButton(
-          backgroundColor: Colors.deepPurple,
-          foregroundColor: Colors.white,
-          onPressed: () {
-            if (_controller.text.trim().isNotEmpty) {
-              _addDiscipline(disciplineProvider, _controller.text.trim());
-              _controller.clear();
-              FocusScope.of(context).unfocus();
-            } else {
-              FocusScope.of(context).requestFocus(_focusNode);
-            }
-          },
-          child: const Icon(Icons.add),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
+      ],
     );
   }
 }

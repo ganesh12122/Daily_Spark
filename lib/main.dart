@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'core/providers/dairy_provider.dart';
 import 'core/providers/discipline_provider.dart';
 import 'ui/screens/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => DisciplineProvider()..loadFromPrefs(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => DisciplineProvider()..loadFromPrefs()),
+        ChangeNotifierProvider(create: (_) => DiaryProvider()..loadFromPrefs()),
+      ],
       child: const MyApp(),
     ),
   );
