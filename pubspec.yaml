@@ -1,0 +1,35 @@
+name: spark_vow
+description: A productivity app to build discipline and focus.
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.4
+  audioplayers: ^6.4.0
+  flutter_local_notifications: ^19.1.0
+  timezone: ^0.10.0
+  flutter_native_timezone: ^2.0.0
+  intl: ^0.20.2
+  shared_preferences: ^2.5.3
+  permission_handler: ^12.0.0+1
+  package_info_plus: ^8.3.0
+  url_launcher: ^6.3.1
+  introduction_screen: ^3.1.17
+  google_fonts: ^6.2.1
+  confetti: ^0.8.0
+  animated_text_kit: ^4.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/sounds/warning.mp3
+    - assets/images/empty_state.jpg
