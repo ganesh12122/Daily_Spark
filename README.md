@@ -1,6 +1,7 @@
-# SparkVow - The Ultimate Discipline Builder
+# DailySpark(BETA_VERSION) - The Ultimate Discipline Builder
 
 Welcome to **SparkVow**, a Flutter-based mobile application designed to help warriors forge unbreakable discipline through daily task tracking, focus timers, motivational features, and reflective journaling.
+currently under development!!!, "Stay Tuned"
 
 ## Table of Contents
 *   [Overview](#overview)
