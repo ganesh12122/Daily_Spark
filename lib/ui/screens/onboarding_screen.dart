@@ -62,7 +62,7 @@ class OnboardingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final pages = [
       PageViewModel(
-        title: "Welcome to SparkVow!",
+        title: "Welcome to DailySpark!",
         body: "Build discipline by tracking daily tasks and staying focused.",
         image: const Center(
           child: Icon(Icons.local_fire_department, size: 100, color: Colors.deepPurple),

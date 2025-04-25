@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
     return Consumer<DisciplineProvider>(
       builder: (context, disciplineProvider, child) {
         return MaterialApp(
-          title: 'SparkVow',
+          title: 'DailySpark',
           theme: ThemeData(
             primarySwatch: Colors.deepPurple,
             brightness: Brightness.light,

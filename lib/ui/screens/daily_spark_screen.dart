@@ -49,24 +49,14 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
   void initState() {
     super.initState();
     _notificationService = NotificationService();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
-    _badgeScaleController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _quoteFadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..forward();
+    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
+    _badgeScaleController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _quoteFadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..forward();
     _confettiController = ConfettiController(duration: const Duration(seconds: 3));
     _initializeNotifications();
     _startTimers();
     _checkAchievements();
     AnalyticsService.logEvent('app_opened');
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<DisciplineProvider>(context, listen: false);
       _displayedList = List.from(provider.list);
@@ -89,17 +79,12 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
 
   void _startTimers() {
     _secondsWastedTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isPaused) {
-        setState(() {
-          _secondsWasted++;
-        });
-      }
+      if (!_isPaused) setState(() => _secondsWasted++);
     });
+
     _pomodoroTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_pomodoroActive && _pomodoroSeconds > 0) {
-        setState(() {
-          _pomodoroSeconds--;
-        });
+        setState(() => _pomodoroSeconds--);
         if (_pomodoroSeconds == 0) {
           _playPomodoroChime();
           _stopPomodoro();
@@ -116,14 +101,12 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
   void _checkAchievements() {
     final provider = Provider.of<DisciplineProvider>(context, listen: false);
     final level = provider.achievementLevel;
-
     if (level != 'none') {
       setState(() {
         _showAchievement = true;
         _achievementLevel = level;
         _badgeScaleController.forward();
       });
-
       if (level == 'gold') {
         _achievementMessage = 'MASTER OF DISCIPLINE! You completed all tasks today!';
         _notificationService.showAchievementNotification(
@@ -139,7 +122,6 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
         );
         AnalyticsService.logEvent('silver_badge_earned');
       }
-
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) {
           setState(() {
@@ -188,7 +170,6 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
     final provider = Provider.of<DisciplineProvider>(context, listen: false);
     final completed = provider.list.where((d) => d.isDone).length;
     final total = provider.list.length;
-
     _notificationService.showAchievementNotification(
       '⚠️ Discipline Failure',
       'You only completed $completed/$total tasks! Try harder tomorrow!',
@@ -250,19 +231,12 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
               CheckboxListTile(
                 title: const Text('Commit to 48 days'),
                 value: commitTo48Days,
-                onChanged: (value) {
-                  setState(() {
-                    commitTo48Days = value ?? true;
-                  });
-                },
+                onChanged: (value) => setState(() => commitTo48Days = value ?? true),
               ),
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(null),
-              child: const Text('Cancel'),
-            ),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop({
                 'confirmed': true,
@@ -311,15 +285,10 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
     if (direction == DismissDirection.startToEnd) {
       final discipline = _displayedList[index];
       if (!provider.canDeleteDiscipline(discipline)) {
-        // Store context before async operation
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         if (mounted) {
           scaffoldMessenger.showSnackBar(
-            SnackBar(
-              content: Text(
-                'You must achieve a 48-day streak before deleting "${discipline.discipline}"!',
-              ),
-            ),
+            SnackBar(content: Text('You must achieve a 48-day streak before deleting "${discipline.discipline}"!')),
           );
         }
         return false;
@@ -333,14 +302,8 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
                 'Do you want to delete this discipline or renew it for another 48 days?',
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop('renew'),
-              child: const Text('Renew'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop('delete'),
-              child: const Text('Delete'),
-            ),
+            TextButton(onPressed: () => Navigator.of(ctx).pop('renew'), child: const Text('Renew')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop('delete'), child: const Text('Delete')),
           ],
         ),
       );
@@ -391,7 +354,6 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
     final completedToday = provider.list.where((d) => d.isDone).length;
     final totalTasks = provider.list.length;
     final completionRate = totalTasks > 0 ? (completedToday / totalTasks) * 100 : 0;
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -431,10 +393,7 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('CLOSE'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('CLOSE')),
         ],
       ),
     );
@@ -466,15 +425,15 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '🔥 THE ULTIMATE DISCIPLINE BUILDER 🔥\n\n'
-                  'This app is designed for warriors who refuse to waste time.\n\n'
-                  'Every second counts. Every discipline matters.\n\n'
+              '🔥 THE ULTIMATE DISCIPLINE BUILDER 🔥\n'
+                  'This app is designed for warriors who refuse to waste time.\n'
+                  'Every second counts. Every discipline matters.\n'
                   'Features:\n'
                   '- Track daily disciplines\n'
                   '- Build unbreakable streaks\n'
                   '- Time wasting counter\n'
                   '- Focus timer\n'
-                  '- Hardcore motivation\n\n'
+                  '- Hardcore motivation\n'
                   'Version: ${packageInfo.version}\n'
                   'Beta Release',
             ),
@@ -510,10 +469,7 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
             },
             child: const Text('SEND FEEDBACK'),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('CLOSE'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('CLOSE')),
         ],
       ),
     );
@@ -539,7 +495,6 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
     final disciplineProvider = Provider.of<DisciplineProvider>(context);
     final theme = Theme.of(context);
     final today = DateTime.now();
-
     return Stack(
       alignment: Alignment.topCenter,
       children: [
@@ -551,43 +506,83 @@ class _DailySparkScreenState extends State<DailySparkScreen> with TickerProvider
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'SPARKVOW',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
-                      ),
-                    ),
-                    Row(
+                    // Warrior Greeting with improved design
+                    Stack(
                       children: [
-                        IconButton(
-                          icon: Icon(disciplineProvider.darkMode
-                              ? Icons.light_mode
-                              : Icons.dark_mode),
-                          tooltip: 'Toggle theme',
-                          onPressed: () {
-                            disciplineProvider.toggleDarkMode();
-                            HapticFeedback.lightImpact();
-                            AnalyticsService.logEvent('theme_toggled',
-                                params: {'dark_mode': disciplineProvider.darkMode});
-                          },
+                        // Text shadow for depth
+                        Text(
+                          '"HELLO WARRIOR"',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontFamily: 'Roboto', // Use a more impactful font
+                            foreground: Paint()
+                              ..style = PaintingStyle.stroke
+                              ..strokeWidth = 2
+                              ..color = Colors.deepPurple,
+                          ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.leaderboard),
-                          tooltip: 'View stats',
-                          onPressed: () {
-                            _showStatistics(context, disciplineProvider);
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.info_outline),
-                          tooltip: 'About app',
-                          onPressed: () {
-                            _showAboutDialog(context);
-                          },
-                        ),
+                        // Main text
                       ],
+                    ),
+                    // Action buttons with better styling
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(1),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Theme toggle button
+                          IconButton(
+                            icon: Icon(
+                              disciplineProvider.darkMode
+                                  ? Icons.light_mode_rounded
+                                  : Icons.dark_mode_rounded,
+                              size: 24,
+                            ),
+                            tooltip: 'Toggle theme',
+                            color: Theme.of(context).colorScheme.onSurface,
+                            onPressed: () {
+                              disciplineProvider.toggleDarkMode();
+                              HapticFeedback.lightImpact();
+                              AnalyticsService.logEvent('theme_toggled',
+                                  params: {'dark_mode': disciplineProvider.darkMode});
+                            },
+                          ),
+                          // Stats button
+                          IconButton(
+                            icon: const Icon(
+                              Icons.leaderboard_rounded,
+                              size: 24,
+                            ),
+                            tooltip: 'View stats',
+                            color: Theme.of(context).colorScheme.onSurface,
+                            onPressed: () {
+                              _showStatistics(context, disciplineProvider);
+                            },
+                          ),
+                          // Info button
+                          IconButton(
+                            icon: const Icon(
+                              Icons.info_outline_rounded,
+                              size: 24,
+                            ),
+                            tooltip: 'About app',
+                            color: Theme.of(context).colorScheme.onSurface,
+                            onPressed: () {
+                              _showAboutDialog(context);
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

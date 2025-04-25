@@ -147,7 +147,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
-                            'DAILY REFLECTIONS',
+                            'YOUR REFLECTIONS',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
